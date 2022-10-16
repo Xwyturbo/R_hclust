@@ -1,0 +1,342 @@
+---
+title: "SUIDE县14类土地利用强度聚类"
+author: "Turbo"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(bruceR)
+library(writexl)
+library(knitr)
+library(kableExtra)
+library(dendextend)
+
+sd_data <- read_xlsx("F:/fragmentation/sui_de/14种土地利用亚类面积.xlsx")
+  kable(summary(sd_data)) %>% 
+  kable_styling("striped", full_width = T)
+
+sui_de_initial <- read_xlsx("F:/fragmentation/sui_de/sui_de_initial.xlsx")
+  kable(summary(sui_de_initial)) %>% 
+  kable_styling("striped", full_width = T)
+  
+sd1 <- sd_data/rowSums(sd_data)
+sd2 <- colSums(sd_data)/sum(sd_data)
+
+## 按照14个亚类计算土地利用强度
+sd_data  <- as_tibble(sd_data)
+sd_data %>% 
+  mutate(lq1 = sd1$科教文卫用地/sd2[1],
+         lq2 = sd1$交通运输用地/sd2[2],
+         lq3 = sd1$林地/sd2[3],
+         lq4 = sd1$园地/sd2[4],
+         lq5 = sd1$水域及水利设施/sd2[5],
+         lq6 = sd1$旱地/sd2[6],
+         lq7 = sd1$草地/sd2[7],
+         lq8 = sd1$水浇地/sd2[8],
+         lq9 = sd1$设施农用地/sd2[9],
+         lq10 = sd1$矿业用地/sd2[10],
+         lq11 = sd1$公共服务用地/sd2[11],
+         lq12 = sd1$商服用地 /sd2[12],
+         lq13 = sd1$工业用地/sd2[13],
+         lq14 = sd1$物流仓储用地/sd2[14])->sd_dataset
+summary(sd_dataset[,15:28]) %>% 
+  kable() %>% 
+  kable_styling("striped", full_width = T)
+
+boxplot(sd_dataset[,15:28],ylim = c(0,5),horizontal = T)
+
+## 检验是否可以采用因子分析降维
+#data_num = sd_dataset[,15:28] %>% 
+#  mutate_all(scale)
+#msa.KMO(sd_dataset[,1:14])
+#msa.bartlett(sd_dataset[,1:14])
+
+## 层次聚类
+d1 <- dist(sd_dataset[,15:28],"canberra")
+hc7 <- hclust(d1,"ward.D2")
+tree = as.dendrogram(hc7)
+c2 <- cutree(hc7,2)
+table(c2)
+plot(cut(tree, h=25)$upper, horiz=FALSE,
+     main="Samples with height higher than 25")
+rect.hclust(hc7,2)
+
+c3 <- cutree(hc7,3)
+table(c3)
+plot(cut(tree, h=25)$upper, horiz=FALSE,
+     main="Samples with height higher than 25")
+rect.hclust(hc7,3)
+
+c4 <- cutree(hc7,4)
+table(c4)
+plot(cut(tree, h=25)$upper, horiz=FALSE,
+     main="Samples with height higher than 25")
+rect.hclust(hc7,4)
+
+c5 <- cutree(hc7,5)
+
+table(c5)%>% 
+  kable() %>% 
+  kable_styling("striped", full_width = T)
+
+plot(cut(tree, h=25)$upper, horiz=FALSE,
+     main="Samples with height higher than 25")
+rect.hclust(hc7,5)
+
+sd_dataset_hclust <- mutate(sd_dataset,村庄名称 = sui_de_initial$ZLDWMC,
+                             fid = sui_de_initial$FID,结果_2 = c2,结果_3 = c3,
+                            结果_4 = c4,结果_5 = c5)
+#write_xlsx(sd_dataset_hclust,"F:/fragmentation/sui_de/hclust/14种土地利用强度的结果1016.xlsx")
+```
+
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(bruceR)
+library(writexl)
+library(knitr)
+library(kableExtra)
+library(dendextend)
+sd_dataset_hclust <- read_xlsx("F:/fragmentation/sui_de/hclust/14种土地利用强度的结果1016.xlsx")
+str(sd_dataset_hclust)
+
+## 以结果2为例
+sd_dataset_hclust %>% 
+  filter(结果_2 == 1) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_2 == 1) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_2 == 2) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_2 == 2) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+```
+
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(bruceR)
+library(writexl)
+library(knitr)
+library(kableExtra)
+library(dendextend)
+sd_dataset_hclust <- read_xlsx("F:/fragmentation/sui_de/hclust/14种土地利用强度的结果1016.xlsx")
+str(sd_dataset_hclust)
+
+## 以结果3为例
+sd_dataset_hclust %>% 
+  filter(结果_3 == 1) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_3 == 1) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_3 == 2) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_3 == 2) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_3 == 3) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_3 == 3) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+```
+
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(bruceR)
+library(writexl)
+library(knitr)
+library(kableExtra)
+library(dendextend)
+sd_dataset_hclust <- read_xlsx("F:/fragmentation/sui_de/hclust/14种土地利用强度的结果1016.xlsx")
+str(sd_dataset_hclust)
+
+## 以结果4为例
+sd_dataset_hclust %>% 
+  filter(结果_4 == 1) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_4 == 1) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_4 == 2) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_4 == 2) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_4 == 3) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_4 == 3) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_4 == 4) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_4 == 4) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+```
+
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(bruceR)
+library(writexl)
+library(knitr)
+library(kableExtra)
+library(dendextend)
+sd_dataset_hclust <- read_xlsx("F:/fragmentation/sui_de/hclust/14种土地利用强度的结果1016.xlsx")
+str(sd_dataset_hclust)
+
+## 以结果5为例
+sd_dataset_hclust %>% 
+  filter(结果_5 == 1) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_5 == 1) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_5 == 2) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_5 == 2) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_5 == 3) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_5 == 3) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_5 == 4) %>% 
+  select(lq1,lq2,lq3,lq4,lq5,lq6,lq7,lq8,
+         lq9,lq10,lq11,lq12,lq13,lq14) %>% 
+  boxplot(ylim = c(0, 10),horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_5 == 5) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+
+sd_dataset_hclust %>% 
+  filter(结果_5 == 5) %>% 
+  select(科教文卫用地,交通运输用地,林地,园地,水域及水利设施,
+          旱地,草地,水浇地,设施农用地,矿业用地,公共服务用地,
+          商服用地,工业用地,物流仓储用地) %>% 
+  boxplot(horizontal = T)
+```
